@@ -31,11 +31,13 @@ m_cartons = joblib.load(f"{MODELS_PATH}/modele_cartons.pkl")
 m_fautes  = joblib.load(f"{MODELS_PATH}/modele_fautes.pkl")
 FEATURES  = joblib.load(f"{MODELS_PATH}/features.pkl")
 print("Modèles chargés !")
+gc.collect()
 
 # ── Chargement données historiques ───────────────────────
 df_hist = pd.read_csv(
     f"{DATA_PATH}/processed/football_complet.csv",
-    parse_dates=["date"]
+    parse_dates=["date"],
+    low_memory=False
 )
 df_hist = df_hist.sort_values("date").reset_index(drop=True)
 
@@ -675,4 +677,5 @@ def predire_avec_compo():
                         "detail": traceback.format_exc()}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
