@@ -1,6 +1,6 @@
 ﻿---
 title: Football IA
-emoji: ⚽
+emoji: soccer
 colorFrom: blue
 colorTo: green
 sdk: docker
