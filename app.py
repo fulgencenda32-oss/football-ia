@@ -12,8 +12,8 @@ app = Flask(__name__)
 CORS(app)
 
 # ── Chargement des modèles ────────────────────────────────
-MODELS_PATH = "/content/data/models"
-DATA_PATH   = "/content/data"
+MODELS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+DATA_PATH   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 print("Chargement des modèles...")
 m_res     = joblib.load(f"{MODELS_PATH}/modele_resultat.pkl")
@@ -133,7 +133,7 @@ PERFORMANCES = {
 }
 
 # Fichier historique prédictions
-HISTO_FILE = "/content/app/historique/predictions.json"
+HISTO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "historique", "predictions.json")
 if not os.path.exists(HISTO_FILE):
     with open(HISTO_FILE, "w") as f:
         json.dump([], f)
