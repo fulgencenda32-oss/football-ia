@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Football IA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;color:#1a1a1a}
+.nav{background:#fff;border-bottom:1px solid #e5e5e5;display:flex;overflow-x:auto;position:sticky;top:0;z-index:100}
+.nav-item{flex:1;min-width:55px;padding:10px 4px;text-align:center;cursor:pointer;font-size:11px;color:#888;border-bottom:2px solid transparent}
+.nav-item.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
+.nav-icon{font-size:16px;display:block;margin-bottom:2px}
+.screen{display:none;padding:14px;max-width:600px;margin:0 auto}
+.screen.active{display:block}
+.card{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid #e8e8e8}
+.card-title{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+label{font-size:12px;color:#888;margin-bottom:3px;display:block}
+select,input[type=text],input[type=number]{width:100%;padding:9px 11px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;color:#1a1a1a;margin-bottom:9px}
+.btn-main{width:100%;padding:13px;background:#1a73e8;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+.btn-main:disabled{background:#ccc;cursor:not-allowed}
+.btn-green{background:#34a853;color:#fff;border:none;border-radius:8px;padding:10px;width:100%;cursor:pointer;font-size:14px;font-weight:500;margin-bottom:8px}
+.btn-gray{background:#f1f3f4;color:#333;border:1px solid #ddd;border-radius:8px;padding:10px;width:100%;cursor:pointer;font-size:13px;margin-bottom:8px}
+.proba-row{display:flex;gap:8px;margin-bottom:12px}
+.proba-item{flex:1;background:#f8f8f8;border-radius:8px;padding:10px;text-align:center;border:1px solid #eee}
+.proba-item.best{background:#e8f0fe;border-color:#1a73e8}
+.proba-pct{font-size:18px;font-weight:700}
+.proba-item.best .proba-pct{color:#1a73e8}
+.proba-lbl{font-size:11px;color:#888;margin-top:2px}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat-item{background:#f8f8f8;border-radius:8px;padding:10px;text-align:center;border:1px solid #eee}
+.stat-val{font-size:15px;font-weight:700}
+.stat-lbl{font-size:11px;color:#888;margin-top:2px}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600}
+.bg{background:#e6f4ea;color:#137333}
+.br{background:#fce8e6;color:#c5221f}
+.bb{background:#e8f0fe;color:#1a73e8}
+.bgr{background:#f1f3f4;color:#5f6368}
+.score-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0f0f0}
+.score-bar{flex:1;height:5px;background:#f0f0f0;border-radius:3px}
+.score-fill{height:100%;border-radius:3px;background:#1a73e8}
+.ctx-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.ctx-lbl{color:#666}
+.ctx-val{font-weight:600}
+.loading{text-align:center;padding:30px;color:#888}
+.spinner{width:28px;height:28px;border:3px solid #eee;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.res-badge{border-radius:10px;padding:12px;text-align:center;margin-bottom:12px}
+.res-home{background:#e8f0fe;color:#1a73e8}
+.res-draw{background:#fef9e7;color:#f39c12}
+.res-away{background:#fce8e6;color:#d93025}
+.res-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.res-team{font-size:19px;font-weight:700;margin-top:3px}
+.teams-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.th-team{flex:1;text-align:center}
+.th-name{font-size:14px;font-weight:700}
+.th-elo{font-size:11px;color:#888}
+.sugg-list{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid #ddd;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:500;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.sugg-item{padding:10px 12px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f5f5f5}
+.sugg-item:hover{background:#f0f4ff}
+.ac-wrap{position:relative;margin-bottom:9px}
+.ac-wrap input{margin-bottom:0}
+.poste-tag{font-size:11px;color:#888;background:#f1f3f4;padding:2px 7px;border-radius:10px}
+.joueur-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f5f5}
+.joueur-nom{font-size:13px;font-weight:500}
+.btn-del{background:none;border:none;color:#f44;cursor:pointer;font-size:17px;padding:0 3px}
+.tab-btns{display:flex;gap:8px;margin-bottom:12px}
+.tab-btn{flex:1;padding:9px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:all .2s}
+.tab-btn-on{background:#1a73e8;color:#fff;border:none}
+.tab-btn-off{background:#f1f3f4;color:#666;border:1px solid #ddd}
+.upload-box{border:2px dashed #ddd;border-radius:8px;padding:18px;text-align:center;cursor:pointer;color:#888;font-size:13px}
+.upload-box:hover{border-color:#1a73e8;color:#1a73e8}
+.match-item{padding:10px 0;border-bottom:1px solid #f0f0f0}
+.match-teams{font-size:14px;font-weight:600}
+.match-sub{font-size:12px;color:#888;margin-top:2px}
+.perf-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f5f5f5}
+.perf-lbl{font-size:13px;min-width:95px}
+.perf-bar{flex:1;height:7px;background:#f0f0f0;border-radius:4px;overflow:hidden}
+.perf-fill{height:100%;border-radius:4px;background:#1a73e8}
+.perf-pct{font-size:13px;font-weight:700;color:#1a73e8;min-width:40px;text-align:right}
+.j-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0}
+.j-team{flex:1;font-size:13px}
+.jr-item{background:#f8f8f8;border-radius:8px;padding:10px;margin-bottom:8px}
+.jr-teams{font-size:14px;font-weight:700;margin-bottom:6px}
+.jr-tags{display:flex;gap:6px;flex-wrap:wrap}
+.ri-input{display:flex;gap:6px;margin-top:6px}
+.ri-input input{flex:1;padding:5px;font-size:12px;margin:0;border:1px solid #ddd;border-radius:6px}
+.ri-btn{padding:5px 10px;background:#34a853;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px}
+.ok{color:#137333;font-size:12px;font-weight:600}
+.ko{color:#c5221f;font-size:12px;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-item active" id="nav-pred" onclick="goTo('pred')"><span class="nav-icon">⚽</span>Prédit.</div>
+  <div class="nav-item" id="nav-jorn" onclick="goTo('jorn')"><span class="nav-icon">📋</span>Journée</div>
+  <div class="nav-item" id="nav-hist" onclick="goTo('hist')"><span class="nav-icon">📊</span>Histo.</div>
+  <div class="nav-item" id="nav-upd" onclick="goTo('upd')"><span class="nav-icon">🔄</span>Màj</div>
+  <div class="nav-item" id="nav-perf" onclick="goTo('perf')"><span class="nav-icon">📈</span>Perfs</div>
+</div>
+
+<!-- PRÉDICTION -->
+<div id="sc-pred" class="screen active">
+
+  <div class="card">
+    <div class="card-title">Match</div>
+    <label>Division</label>
+    <select id="sel-div" onchange="onDivChange()">
+      <option value="Premier_League">Premier League</option>
+      <option value="Championship">Championship</option>
+      <option value="League_One">League One</option>
+    </select>
+    <label>Domicile</label>
+    <div class="ac-wrap">
+      <input type="text" id="in-dom" placeholder="Cherche une équipe..." autocomplete="off"
+        oninput="acEquipe(this,'ac-dom')" onfocus="acEquipe(this,'ac-dom')"
+        onblur="setTimeout(()=>hide('ac-dom'),200)">
+      <div class="sugg-list" id="ac-dom" style="display:none"></div>
+    </div>
+    <label>Extérieur</label>
+    <div class="ac-wrap">
+      <input type="text" id="in-ext" placeholder="Cherche une équipe..." autocomplete="off"
+        oninput="acEquipe(this,'ac-ext')" onfocus="acEquipe(this,'ac-ext')"
+        onblur="setTimeout(()=>hide('ac-ext'),200)">
+      <div class="sugg-list" id="ac-ext" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cotes bookmaker (optionnel)</div>
+    <div style="display:flex;gap:8px">
+      <div style="flex:1"><label>Dom</label><input type="number" id="c-dom" placeholder="1.85" step=".01" min="1" style="margin:0"></div>
+      <div style="flex:1"><label>Nul</label><input type="number" id="c-nul" placeholder="3.40" step=".01" min="1" style="margin:0"></div>
+      <div style="flex:1"><label>Ext</label><input type="number" id="c-ext" placeholder="4.20" step=".01" min="1" style="margin:0"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Compositions (optionnel)</div>
+    <div class="tab-btns">
+      <button class="tab-btn tab-btn-on" id="tb-man" onclick="showTab('man')">✏️ Manuel</button>
+      <button class="tab-btn tab-btn-off" id="tb-csv" onclick="showTab('csv')">📄 CSV</button>
+    </div>
+
+    <div id="tab-man">
+      <div style="margin-bottom:14px">
+        <div id="hd-dom" style="font-size:13px;font-weight:600;color:#1a73e8;margin-bottom:6px">🏠 Domicile — 0/11</div>
+        <div class="ac-wrap">
+          <input type="text" id="in-jd" placeholder="Cherche un joueur dom..." autocomplete="off"
+            oninput="acJoueur(this,'ac-jd','dom')" onfocus="acJoueur(this,'ac-jd','dom')"
+            onblur="setTimeout(()=>hide('ac-jd'),200)" style="margin:0">
+          <div class="sugg-list" id="ac-jd" style="display:none"></div>
+        </div>
+        <div id="ls-dom" style="margin-top:6px"></div>
+      </div>
+      <div>
+        <div id="hd-ext" style="font-size:13px;font-weight:600;color:#d93025;margin-bottom:6px">✈️ Extérieur — 0/11</div>
+        <div class="ac-wrap">
+          <input type="text" id="in-je" placeholder="Cherche un joueur ext..." autocomplete="off"
+            oninput="acJoueur(this,'ac-je','ext')" onfocus="acJoueur(this,'ac-je','ext')"
+            onblur="setTimeout(()=>hide('ac-je'),200)" style="margin:0">
+          <div class="sugg-list" id="ac-je" style="display:none"></div>
+        </div>
+        <div id="ls-ext" style="margin-top:6px"></div>
+      </div>
+      <button onclick="vidCompo()" style="width:100%;margin-top:10px;padding:8px;background:#fce8e6;color:#c5221f;border:none;border-radius:8px;cursor:pointer;font-size:13px">🗑️ Vider</button>
+    </div>
+
+    <div id="tab-csv" style="display:none">
+      <p style="font-size:13px;color:#888;margin-bottom:10px;line-height:1.6">
+        ① Sélectionne les équipes<br>② Télécharge le modèle<br>③ Mets <b>1</b> pour les titulaires<br>④ Charge le fichier
+      </p>
+      <button class="btn-gray" onclick="dlCSV()">⬇️ Télécharger modèle CSV</button>
+      <div class="upload-box" onclick="document.getElementById('fi-csv').click()">
+        📄 Clique pour charger ton CSV
+        <input type="file" id="fi-csv" accept=".csv" style="display:none" onchange="loadCSV(this)">
+      </div>
+      <div id="csv-st" style="margin-top:8px;font-size:13px"></div>
+    </div>
+  </div>
+
+  <button class="btn-main" id="btn-pred" onclick="doPred()">🔮 Prédire ce match</button>
+  <div id="res-box"></div>
+</div>
+
+<!-- JOURNÉE -->
+<div id="sc-jorn" class="screen">
+  <div class="card">
+    <div class="card-title">Journée complète</div>
+    <div id="jorn-list"></div>
+    <label>Domicile</label>
+    <div class="ac-wrap">
+      <input type="text" id="jn-dom" placeholder="Équipe domicile..." autocomplete="off"
+        oninput="acEquipe(this,'ac-jnd')" onfocus="acEquipe(this,'ac-jnd')"
+        onblur="setTimeout(()=>hide('ac-jnd'),200)">
+      <div class="sugg-list" id="ac-jnd" style="display:none"></div>
+    </div>
+    <label>Extérieur</label>
+    <div class="ac-wrap">
+      <input type="text" id="jn-ext" placeholder="Équipe extérieur..." autocomplete="off"
+        oninput="acEquipe(this,'ac-jne')" onfocus="acEquipe(this,'ac-jne')"
+        onblur="setTimeout(()=>hide('ac-jne'),200)">
+      <div class="sugg-list" id="ac-jne" style="display:none"></div>
+    </div>
+    <button class="btn-gray" onclick="addMatch()">+ Ajouter ce match</button>
+    <button class="btn-main" onclick="predAll()" style="margin-top:4px">🔮 Prédire tous</button>
+  </div>
+  <div id="jorn-res"></div>
+</div>
+
+<!-- HISTORIQUE -->
+<div id="sc-hist" class="screen">
+  <div class="card">
+    <div class="card-title">Historique</div>
+    <div id="hist-list"><div class="loading"><div class="spinner"></div>Chargement...</div></div>
+  </div>
+</div>
+
+<!-- MISE À JOUR -->
+<div id="sc-upd" class="screen">
+  <div class="card">
+    <div class="card-title">Mise à jour hebdomadaire</div>
+    <p style="font-size:13px;color:#888;margin-bottom:12px;line-height:1.6">
+      Lance chaque lundi matin pour intégrer les matchs du week-end.
+    </p>
+    <button class="btn-green" onclick="doUpdate()">🔄 Lancer la mise à jour</button>
+    <div id="upd-st"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Système</div>
+    <div class="ctx-row"><span class="ctx-lbl">Matchs historiques</span><span class="ctx-val">36 994</span></div>
+    <div class="ctx-row"><span class="ctx-lbl">Saison en cours</span><span class="ctx-val">2025/2026</span></div>
+    <div class="ctx-row"><span class="ctx-lbl">Modèles</span><span class="ctx-val">13</span></div>
+    <div class="ctx-row" style="border:none"><span class="ctx-lbl">Variables</span><span class="ctx-val">69</span></div>
+  </div>
+</div>
+
+<!-- PERFORMANCES -->
+<div id="sc-perf" class="screen">
+  <div class="card">
+    <div class="card-title">Performances (6 778 matchs test 2021-2026)</div>
+    <div id="perf-list"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Mes prédictions</div>
+    <div class="ctx-row"><span class="ctx-lbl">Total</span><span class="ctx-val" id="p-tot">0</span></div>
+    <div class="ctx-row"><span class="ctx-lbl">Corrects</span><span class="ctx-val" id="p-ok" style="color:#137333">0</span></div>
+    <div class="ctx-row" style="border:none"><span class="ctx-lbl">Taux</span><span class="ctx-val" id="p-rate">—</span></div>
+  </div>
+</div>
+
+<script>
+// ─── ÉTAT GLOBAL ───────────────────────────────────────────
+var eqParDiv = {};
+var allEq    = [];
+var jDom     = [];  // joueurs équipe dom chargés
+var jExt     = [];  // joueurs équipe ext chargés
+var titDom   = [];  // titulaires dom sélectionnés
+var titExt   = [];  // titulaires ext sélectionnés
+var jornMatchs = [];
+
+// ─── NAVIGATION ────────────────────────────────────────────
+function goTo(sc) {
+  ['pred','jorn','hist','upd','perf'].forEach(function(s) {
+    document.getElementById('sc-'+s).classList.remove('active');
+    document.getElementById('nav-'+s).classList.remove('active');
+  });
+  document.getElementById('sc-'+sc).classList.add('active');
+  document.getElementById('nav-'+sc).classList.add('active');
+  if(sc==='hist') loadHist();
+  if(sc==='perf') loadPerf();
+}
+
+// ─── ONGLETS COMPOSITIONS ──────────────────────────────────
+function showTab(t) {
+  document.getElementById('tab-man').style.display = t==='man' ? 'block' : 'none';
+  document.getElementById('tab-csv').style.display = t==='csv' ? 'block' : 'none';
+  document.getElementById('tb-man').className = 'tab-btn ' + (t==='man' ? 'tab-btn-on' : 'tab-btn-off');
+  document.getElementById('tb-csv').className = 'tab-btn ' + (t==='csv' ? 'tab-btn-on' : 'tab-btn-off');
+}
+
+// ─── UTILITAIRES ───────────────────────────────────────────
+function hide(id) {
+  var el = document.getElementById(id);
+  if(el) el.style.display = 'none';
+}
+
+function esc(s) {
+  return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');
+}
+
+// ─── AUTOCOMPLÉTION ÉQUIPES ────────────────────────────────
+function acEquipe(inp, listId) {
+  var div  = document.getElementById('sel-div');
+  var d    = div ? div.value : 'Premier_League';
+  var list = eqParDiv[d] || allEq;
+  var v    = inp.value.toLowerCase().trim();
+  var filt = v==='' ? list.slice(0,12) : list.filter(function(e){return e.toLowerCase().includes(v);}).slice(0,10);
+  var el   = document.getElementById(listId);
+  if(!filt.length){el.style.display='none';return;}
+  el.innerHTML = filt.map(function(e){
+    return '<div class="sugg-item" onmousedown="pickEq(\''+esc(e)+'\',\''+inp.id+'\',\''+listId+'\')">'+e+'</div>';
+  }).join('');
+  el.style.display='block';
+}
+
+function pickEq(eq, inpId, listId) {
+  document.getElementById(inpId).value = eq;
+  hide(listId);
+  // Charger joueurs automatiquement
+  if(inpId==='in-dom') loadJoueurs(eq,'dom');
+  if(inpId==='in-ext') loadJoueurs(eq,'ext');
+}
+
+function onDivChange() {
+  document.getElementById('in-dom').value='';
+  document.getElementById('in-ext').value='';
+}
+
+// ─── JOUEURS ───────────────────────────────────────────────
+async function loadJoueurs(eq, cote) {
+  try {
+    var r = await fetch('/api/joueurs/'+encodeURIComponent(eq));
+    var d = await r.json();
+    if(cote==='dom') jDom = d.joueurs||[];
+    else             jExt = d.joueurs||[];
+  } catch(e){console.error(e);}
+}
+
+function acJoueur(inp, listId, cote) {
+  var joueurs = cote==='dom' ? jDom : jExt;
+  var v = inp.value.toLowerCase().trim();
+  var el = document.getElementById(listId);
+  if(!joueurs.length){
+    el.innerHTML='<div class="sugg-item" style="color:#888">Sélectionne d\'abord l\'équipe</div>';
+    el.style.display='block'; return;
+  }
+  var filt = v==='' ? joueurs.slice(0,12) : joueurs.filter(function(j){return j.joueur.toLowerCase().includes(v);}).slice(0,10);
+  if(!filt.length){el.style.display='none';return;}
+  el.innerHTML = filt.map(function(j){
+    return '<div class="sugg-item" onmousedown="addJoueur(\''+esc(j.joueur)+'\',\''+j.poste_std+'\',\''+cote+'\')">'+
+      '<span>'+j.joueur+'</span><span class="poste-tag">'+j.poste_std+'</span></div>';
+  }).join('');
+  el.style.display='block';
+}
+
+function addJoueur(nom, poste, cote) {
+  var lst = cote==='dom' ? titDom : titExt;
+  if(lst.length>=11){alert('11 titulaires max !');return;}
+  if(lst.find(function(j){return j.joueur===nom;})){alert(nom+' déjà ajouté !');return;}
+  lst.push({joueur:nom, poste:poste});
+  document.getElementById(cote==='dom'?'in-jd':'in-je').value='';
+  hide(cote==='dom'?'ac-jd':'ac-je');
+  renderTit(cote);
+}
+
+function delJoueur(nom, cote) {
+  if(cote==='dom') titDom=titDom.filter(function(j){return j.joueur!==nom;});
+  else             titExt=titExt.filter(function(j){return j.joueur!==nom;});
+  renderTit(cote);
+}
+
+var ORD={GK:0,DEF:1,MID_DEF:2,MID:3,MID_ATT:4,ATT:5};
+
+function renderTit(cote) {
+  var lst  = cote==='dom' ? titDom : titExt;
+  var hdId = cote==='dom' ? 'hd-dom' : 'hd-ext';
+  var lsId = cote==='dom' ? 'ls-dom' : 'ls-ext';
+  var emoji= cote==='dom' ? '🏠 Domicile' : '✈️ Extérieur';
+  var col  = cote==='dom' ? '#1a73e8' : '#d93025';
+  var ok   = lst.length===11 ? ' <span style="color:#137333;font-size:12px">✅</span>' : '';
+  document.getElementById(hdId).innerHTML =
+    '<span style="color:'+col+'">'+emoji+' — '+lst.length+'/11</span>'+ok;
+  var tri = lst.slice().sort(function(a,b){return (ORD[a.poste]||3)-(ORD[b.poste]||3);});
+  document.getElementById(lsId).innerHTML = tri.map(function(j){
+    return '<div class="joueur-row">'+
+      '<span class="joueur-nom">'+j.joueur+'</span>'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
+      '<span class="poste-tag">'+j.poste+'</span>'+
+      '<button class="btn-del" onmousedown="delJoueur(\''+esc(j.joueur)+'\',\''+cote+'\')">×</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+function vidCompo() {
+  titDom=[]; titExt=[];
+  renderTit('dom'); renderTit('ext');
+}
+
+// ─── CSV COMPOSITIONS ──────────────────────────────────────
+async function dlCSV() {
+  var eqD = document.getElementById('in-dom').value.trim();
+  var eqE = document.getElementById('in-ext').value.trim();
+  if(!eqD||!eqE){alert('Sélectionne les deux équipes !');return;}
+  if(!jDom.length) await loadJoueurs(eqD,'dom');
+  if(!jExt.length) await loadJoueurs(eqE,'ext');
+  var rows=['equipe,joueur,poste_std,titulaire'];
+  jDom.forEach(function(j){rows.push(eqD+','+j.joueur+','+j.poste_std+',0');});
+  jExt.forEach(function(j){rows.push(eqE+','+j.joueur+','+j.poste_std+',0');});
+  var b=new Blob([rows.join('\n')],{type:'text/csv'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(b);
+  a.download='composition_match.csv';
+  a.click();
+  document.getElementById('csv-st').innerHTML='<span style="color:#137333">✅ Modèle téléchargé !</span>';
+}
+
+function loadCSV(inp) {
+  var f=inp.files[0]; if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(e){
+    try {
+      var lines=e.target.result.trim().split('\n');
+      var hdr=lines[0].split(',').map(function(h){return h.trim();});
+      var iE=hdr.indexOf('equipe'),iJ=hdr.indexOf('joueur');
+      var iP=hdr.indexOf('poste_std'),iT=hdr.indexOf('titulaire');
+      if(iE<0||iJ<0||iT<0){
+        document.getElementById('csv-st').innerHTML='<span style="color:red">❌ Format invalide</span>';return;
+      }
+      var eqs=[...new Set(lines.slice(1).filter(function(l){return l.trim();}).map(function(l){return l.split(',')[iE]&&l.split(',')[iE].trim();}).filter(Boolean))];
+      titDom=[];titExt=[];
+      lines.slice(1).forEach(function(l){
+        if(!l.trim())return;
+        var c=l.split(',');
+        var eq=c[iE]&&c[iE].trim(),nom=c[iJ]&&c[iJ].trim();
+        var pos=iP>=0&&c[iP]?c[iP].trim():'MID';
+        var tit=parseInt(c[iT]);
+        if(tit===1&&nom){
+          if(eq===eqs[0]) titDom.push({joueur:nom,poste:pos});
+          else if(eq===eqs[1]) titExt.push({joueur:nom,poste:pos});
+        }
+      });
+      renderTit('dom');renderTit('ext');
+      document.getElementById('csv-st').innerHTML=
+        '<span style="color:#137333">✅ '+titDom.length+' dom / '+titExt.length+' ext</span>';
+      showTab('man');
+    }catch(err){
+      document.getElementById('csv-st').innerHTML='<span style="color:red">❌ '+err.message+'</span>';
+    }
+  };
+  rd.readAsText(f);
+}
+
+// ─── PRÉDICTION ────────────────────────────────────────────
+async function doPred() {
+  var eqD=document.getElementById('in-dom').value.trim();
+  var eqE=document.getElementById('in-ext').value.trim();
+  var div=document.getElementById('sel-div').value;
+  var cD=document.getElementById('c-dom').value;
+  var cN=document.getElementById('c-nul').value;
+  var cE=document.getElementById('c-ext').value;
+  if(!eqD||!eqE){alert('Entre les deux équipes !');return;}
+  if(eqD===eqE){alert('Équipes différentes !');return;}
+  if(!jDom.length) await loadJoueurs(eqD,'dom');
+  if(!jExt.length) await loadJoueurs(eqE,'ext');
+  var btn=document.getElementById('btn-pred');
+  btn.disabled=true;btn.textContent='⏳ Calcul...';
+  document.getElementById('res-box').innerHTML='<div class="loading"><div class="spinner"></div>Calcul des prédictions...</div>';
+  try {
+    var r=await fetch('/api/predire_avec_compo',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({equipe_dom:eqD,equipe_ext:eqE,division:div,
+        cote_dom:cD||null,cote_nul:cN||null,cote_ext:cE||null,
+        titulaires_dom:titDom,titulaires_ext:titExt})
+    });
+    var data=await r.json();
+    if(data.error){
+      document.getElementById('res-box').innerHTML='<div class="card" style="color:red">❌ '+data.error+'</div>';
+    } else {
+      showResult(data,'res-box');
+    }
+  }catch(err){
+    document.getElementById('res-box').innerHTML='<div class="card" style="color:red">Erreur: '+err.message+'</div>';
+  }
+  btn.disabled=false;btn.textContent='🔮 Prédire ce match';
+}
+
+function showResult(d, boxId) {
+  var r=d.resultat,b=d.buts,ctx=d.contexte,sc=d.scores_exacts,co=d.corners,ca=d.cartons;
+  var bc=r.prob_dom>r.prob_ext&&r.prob_dom>r.prob_nul?'res-home':(r.prob_ext>r.prob_dom&&r.prob_ext>r.prob_nul?'res-away':'res-draw');
+  var pt=r.prediction==='Victoire dom'?d.equipe_dom:(r.prediction==='Victoire ext'?d.equipe_ext:'Match Nul');
+  var probs=[r.prob_dom,r.prob_nul,r.prob_ext];
+  var best=probs.indexOf(Math.max.apply(null,probs));
+  var html='<div class="card">'
+    +'<div class="teams-hdr"><div class="th-team"><div class="th-name">'+d.equipe_dom+'</div><div class="th-elo">ELO '+ctx.elo_dom+'</div></div>'
+    +'<span style="color:#ccc;padding:0 10px">vs</span>'
+    +'<div class="th-team"><div class="th-name">'+d.equipe_ext+'</div><div class="th-elo">ELO '+ctx.elo_ext+'</div></div></div>'
+    +'<div class="res-badge '+bc+'"><div class="res-label">Résultat prédit</div><div class="res-team">'+pt+'</div></div>'
+    +'<div class="proba-row">'
+    +[['Dom',r.prob_dom],['Nul',r.prob_nul],['Ext',r.prob_ext]].map(function(x,i){
+      return '<div class="proba-item'+(i===best?' best':'')+'"><div class="proba-pct">'+x[1]+'%</div><div class="proba-lbl">'+x[0]+'</div></div>';
+    }).join('')+'</div></div>'
+    +'<div class="card"><div class="card-title">⚽ Buts</div>'
+    +'<div style="text-align:center;font-size:30px;font-weight:700;color:#1a73e8;margin:8px 0 4px">'+b.score_dom+' — '+b.score_ext+'</div>'
+    +'<div style="text-align:center;font-size:12px;color:#aaa;margin-bottom:12px">Total prédit : '+b.total+' buts</div>'
+    +'<div class="stats-grid">'
+    +'<div class="stat-item"><div class="stat-val"><span class="badge '+(b.over_15>=50?'bg':'br')+'">'+(b.over_15>=50?'OUI':'NON')+'</span></div><div class="stat-lbl">Over 1.5 ('+b.over_15+'%)</div></div>'
+    +'<div class="stat-item"><div class="stat-val"><span class="badge '+(b.over_25>=50?'bg':'br')+'">'+(b.over_25>=50?'OUI':'NON')+'</span></div><div class="stat-lbl">Over 2.5 ('+b.over_25+'%)</div></div>'
+    +'<div class="stat-item"><div class="stat-val"><span class="badge '+(b.btts>=50?'bg':'br')+'">'+(b.btts>=50?'OUI':'NON')+'</span></div><div class="stat-lbl">BTTS ('+b.btts+'%)</div></div>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-title">🎯 Top 5 scores exacts</div>'
+    +sc.map(function(s,i){
+      return '<div class="score-row"><span style="font-size:12px;color:#aaa;min-width:18px">'+(i+1)+'.</span>'
+        +'<span style="font-size:14px;font-weight:700;min-width:38px">'+s.score+'</span>'
+        +'<div class="score-bar"><div class="score-fill" style="width:'+Math.min(s.proba*5,100)+'%"></div></div>'
+        +'<span style="font-size:13px;font-weight:600;color:#1a73e8;min-width:38px;text-align:right">'+s.proba+'%</span></div>';
+    }).join('')+'</div>'
+    +'<div class="card"><div class="card-title">🚩 Corners & 🟨 Cartons</div><div class="stats-grid">'
+    +'<div class="stat-item"><div class="stat-val">'+co.total+'</div><div class="stat-lbl">Corners</div></div>'
+    +'<div class="stat-item"><div class="stat-val"><span class="badge '+(co.over_11>=50?'bg':'br')+'">'+(co.over_11>=50?'OUI':'NON')+'</span></div><div class="stat-lbl">Over 11 ('+co.over_11+'%)</div></div>'
+    +'<div class="stat-item"><div class="stat-val">'+ca.jaunes+'</div><div class="stat-lbl">Cartons J.</div></div>'
+    +'<div class="stat-item"><div class="stat-val">'+ca.fautes+'</div><div class="stat-lbl">Fautes</div></div>'
+    +'<div class="stat-item"><div class="stat-val">'+ctx.xg_dom+'</div><div class="stat-lbl">xG dom</div></div>'
+    +'<div class="stat-item"><div class="stat-val">'+ctx.xg_ext+'</div><div class="stat-lbl">xG ext</div></div>'
+    +'</div></div>';
+
+  if(d.compositions){
+    var cm=d.compositions,dm=cm.dom,ex=cm.ext,df=dm.valeur_totale-ex.valeur_totale;
+    html+='<div class="card"><div class="card-title">👥 Compositions</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div><div style="font-size:12px;font-weight:600;color:#1a73e8;margin-bottom:6px">🏠 '+d.equipe_dom+'</div>'
+      +'<div class="ctx-row"><span class="ctx-lbl">Valeur XI</span><span class="ctx-val">'+dm.valeur_totale+'M€</span></div>'
+      +'<div class="ctx-row"><span class="ctx-lbl">Attaque</span><span class="ctx-val">'+dm.score_att+'/10</span></div>'
+      +'<div class="ctx-row" style="border:none"><span class="ctx-lbl">Défense</span><span class="ctx-val">'+dm.score_def+'/10</span></div></div>'
+      +'<div><div style="font-size:12px;font-weight:600;color:#d93025;margin-bottom:6px">✈️ '+d.equipe_ext+'</div>'
+      +'<div class="ctx-row"><span class="ctx-lbl">Valeur XI</span><span class="ctx-val">'+ex.valeur_totale+'M€</span></div>'
+      +'<div class="ctx-row"><span class="ctx-lbl">Attaque</span><span class="ctx-val">'+ex.score_att+'/10</span></div>'
+      +'<div class="ctx-row" style="border:none"><span class="ctx-lbl">Défense</span><span class="ctx-val">'+ex.score_def+'/10</span></div></div>'
+      +'</div>'
+      +'<div style="background:#e8f0fe;border-radius:8px;padding:8px 12px;margin-top:10px;font-size:12px;color:#1a73e8">'
+      +'Écart valeur : '+(df>=0?'+':'')+df+'M€ · Source : '+d.source+'</div></div>';
+  }
+
+  html+='<div class="card"><div class="card-title">📊 Contexte</div>'
+    +'<div class="ctx-row"><span class="ctx-lbl">Forme dom (10j)</span><span class="ctx-val">'+ctx.forme_dom+' pts</span></div>'
+    +'<div class="ctx-row"><span class="ctx-lbl">Forme ext (10j)</span><span class="ctx-val">'+ctx.forme_ext+' pts</span></div>'
+    +'<div class="ctx-row"><span class="ctx-lbl">Rang dom</span><span class="ctx-val">'+ctx.rang_dom+'e</span></div>'
+    +'<div class="ctx-row"><span class="ctx-lbl">Rang ext</span><span class="ctx-val">'+ctx.rang_ext+'e</span></div>'
+    +'<div class="ctx-row"><span class="ctx-lbl">Momentum dom</span><span class="ctx-val" style="color:'+(ctx.momentum_dom>=0?'#137333':'#c5221f')+'">'+(ctx.momentum_dom>=0?'+':'')+ctx.momentum_dom+'</span></div>'
+    +'<div class="ctx-row"><span class="ctx-lbl">Momentum ext</span><span class="ctx-val" style="color:'+(ctx.momentum_ext>=0?'#137333':'#c5221f')+'">'+(ctx.momentum_ext>=0?'+':'')+ctx.momentum_ext+'</span></div>'
+    +'<div class="ctx-row"><span class="ctx-lbl">Fatigue dom</span><span class="ctx-val">'+ctx.fatigue_dom+' match(s)</span></div>'
+    +'<div class="ctx-row" style="border:none"><span class="ctx-lbl">Fatigue ext</span><span class="ctx-val">'+ctx.fatigue_ext+' match(s)</span></div>'
+    +'</div>'
+    +'<div style="text-align:center;font-size:11px;color:#aaa;padding:8px 0 14px">'+d.source+' · '+d.date+'</div>';
+
+  document.getElementById(boxId).innerHTML=html;
+}
+
+// ─── JOURNÉE ───────────────────────────────────────────────
+function addMatch() {
+  var d=document.getElementById('jn-dom').value.trim();
+  var e=document.getElementById('jn-ext').value.trim();
+  if(!d||!e){alert('Entre les deux équipes !');return;}
+  if(d===e){alert('Équipes différentes !');return;}
+  jornMatchs.push({dom:d,ext:e});
+  document.getElementById('jn-dom').value='';
+  document.getElementById('jn-ext').value='';
+  renderJorn();
+}
+
+function delMatch(i){jornMatchs.splice(i,1);renderJorn();}
+
+function renderJorn(){
+  var el=document.getElementById('jorn-list');
+  if(!jornMatchs.length){el.innerHTML='<p style="font-size:13px;color:#888;margin-bottom:8px">Aucun match ajouté</p>';return;}
+  el.innerHTML=jornMatchs.map(function(m,i){
+    return '<div class="j-row"><div class="j-team">'+m.dom+'</div>'
+      +'<span style="color:#ccc;font-size:12px">vs</span>'
+      +'<div class="j-team" style="text-align:right">'+m.ext+'</div>'
+      +'<button onclick="delMatch('+i+')" style="background:none;border:none;color:#f44;cursor:pointer;font-size:17px">×</button></div>';
+  }).join('');
+}
+
+async function predAll(){
+  if(!jornMatchs.length){alert('Ajoute des matchs !');return;}
+  var div=document.getElementById('sel-div').value;
+  var el=document.getElementById('jorn-res');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Calcul de '+jornMatchs.length+' match(s)...</div>';
+  var results=[];
+  for(var i=0;i<jornMatchs.length;i++){
+    try{
+      var r=await fetch('/api/predire_avec_compo',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({equipe_dom:jornMatchs[i].dom,equipe_ext:jornMatchs[i].ext,division:div,titulaires_dom:[],titulaires_ext:[]})});
+      results.push(await r.json());
+    }catch(e){results.push({error:e.message});}
+  }
+  el.innerHTML=results.map(function(d){
+    if(d.error)return '<div class="jr-item" style="color:red">❌ '+d.error+'</div>';
+    var r=d.resultat,b=d.buts;
+    var pred=r.prediction==='Victoire dom'?d.equipe_dom:(r.prediction==='Victoire ext'?d.equipe_ext:'Match Nul');
+    return '<div class="jr-item"><div class="jr-teams">'+d.equipe_dom+' vs '+d.equipe_ext+'</div>'
+      +'<div class="jr-tags">'
+      +'<span class="badge bb">'+pred+'</span>'
+      +'<span class="badge bgr">'+r.prob_dom+'%/'+r.prob_nul+'%/'+r.prob_ext+'%</span>'
+      +'<span class="badge bgr">Score: '+b.score_dom+'-'+b.score_ext+'</span>'
+      +'<span class="badge '+(b.over_25>=50?'bg':'bgr')+'">O2.5: '+b.over_25+'%</span>'
+      +'</div></div>';
+  }).join('');
+}
+
+// ─── HISTORIQUE ────────────────────────────────────────────
+async function loadHist(){
+  try{
+    var r=await fetch('/api/historique');
+    var data=await r.json();
+    var el=document.getElementById('hist-list');
+    if(!data.length){el.innerHTML='<p style="font-size:13px;color:#888">Aucune prédiction</p>';return;}
+    var tot=0,ok=0;
+    el.innerHTML=data.map(function(d,i){
+      var r=d.resultat;
+      var pred=r.prediction==='Victoire dom'?'1':(r.prediction==='Victoire ext'?'2':'N');
+      var hasR=d.real_result!==undefined;
+      if(hasR){tot++;if(d.real_result===pred)ok++;}
+      return '<div class="match-item">'
+        +'<div class="match-teams">'+d.equipe_dom+' vs '+d.equipe_ext+'</div>'
+        +'<div class="match-sub">'+d.date+' · '+d.division.replace(/_/g,' ')+'</div>'
+        +'<div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+        +'<span class="badge bb">'+r.prediction+'</span>'
+        +'<span class="badge bgr">'+d.buts.score_dom+'-'+d.buts.score_ext+'</span>'
+        +(hasR?(d.real_result===pred?'<span class="ok">✓ Correct</span>':'<span class="ko">✗ Incorrect</span>'):'')
+        +'</div>'
+        +'<div class="ri-input">'
+        +'<input type="text" placeholder="Vrai résultat (1/N/2)" id="rv-'+i+'" maxlength="1" value="'+(d.real_result||'')+'">'
+        +'<button class="ri-btn" onclick="saveRes('+i+')">Sauver</button>'
+        +'</div></div>';
+    }).join('');
+    document.getElementById('p-tot').textContent=data.length;
+    document.getElementById('p-ok').textContent=ok;
+    document.getElementById('p-rate').textContent=tot>0?(ok/tot*100).toFixed(1)+'%':'—';
+  }catch(e){document.getElementById('hist-list').innerHTML='<p style="color:red">Erreur</p>';}
+}
+
+async function saveRes(i){
+  var v=document.getElementById('rv-'+i).value.toUpperCase();
+  if(!['1','N','2'].includes(v)){alert('Entre 1, N ou 2');return;}
+  try{
+    await fetch('/api/sauver_resultat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i,real_result:v})});
+    loadHist();
+  }catch(e){console.error(e);}
+}
+
+// ─── PERFORMANCES ──────────────────────────────────────────
+async function loadPerf(){
+  try{
+    var r=await fetch('/api/performances');
+    var d=await r.json();
+    document.getElementById('perf-list').innerHTML=Object.entries(d).map(function(e){
+      return '<div class="perf-item"><div class="perf-lbl">'+e[0]+'</div>'
+        +'<div class="perf-bar"><div class="perf-fill" style="width:'+e[1]+'%"></div></div>'
+        +'<div class="perf-pct">'+e[1]+'%</div></div>';
+    }).join('');
+  }catch(e){document.getElementById('perf-list').innerHTML='<p style="color:red">Erreur</p>';}
+}
+
+// ─── MISE À JOUR ───────────────────────────────────────────
+async function doUpdate(){
+  var el=document.getElementById('upd-st');
+  el.innerHTML='<div class="loading" style="padding:16px"><div class="spinner"></div>Mise à jour en cours...</div>';
+  try{
+    var r=await fetch('/api/mise_a_jour',{method:'POST'});
+    var d=await r.json();
+    el.innerHTML='<div style="background:#e6f4ea;border:1px solid #34a853;border-radius:8px;padding:12px;margin-top:8px;color:#137333;font-size:13px">✅ '+(d.message||'Données à jour')+'</div>';
+  }catch(e){
+    el.innerHTML='<div style="background:#fce8e6;border:1px solid #d93025;border-radius:8px;padding:12px;margin-top:8px;color:#c5221f;font-size:13px">❌ '+e.message+'</div>';
+  }
+}
+
+// ─── INIT ───────────────────────────────────────────────────
+async function init(){
+  try{
+    var r=await fetch('/api/equipes_list');
+    eqParDiv=await r.json();
+    allEq=[...new Set(Object.values(eqParDiv).flat())].sort();
+  }catch(e){console.error('Init error:',e);}
+}
+
+init();
+</script>
+</body>
+</html>
